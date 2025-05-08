@@ -1,4 +1,4 @@
 {
-  "version": "1.0.1",
-  "changelog": "Initial release of mns-airdrops system."
+  "version": "1.1.0",
+  "changelog": "Added multi-framework support and distance-based sounds."
 }
