@@ -3,7 +3,7 @@ game 'gta5'
 
 name 'mns-airdrops'
 author 'Mooons'
-version '1.0.0' -- Specify version in semantic format
+version '1.0.1' -- Specify version in semantic format
 
 description 'Simple airdrop script for QBCore/QBox'
 repository 'https://github.com/mooons9992/mns-airdrops'
