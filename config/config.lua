@@ -5,8 +5,8 @@ return {
    
    -- UI framework configuration
    UI = {
-      inventory = 'qb', -- Options: 'qb', 'ox'
-      progressBar = 'ox', -- Options: 'qb', 'ox'
+      inventory = 'ps', -- Options: 'qb', 'ox'
+      progressBar = 'qb', -- Options: 'qb', 'ox'
       notification = 'qb', -- Options: 'qb', 'ox', 'custom'
       target = 'ox', -- Options: 'qb', 'ox'
    },
