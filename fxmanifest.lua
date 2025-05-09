@@ -3,9 +3,9 @@ game 'gta5'
 
 name 'mns-airdrops'
 author 'Mooons'
-version '1.1.0' -- Updated version to 1.1.0
+version '1.1.1'
 
-description 'Simple airdrop script for QBCore/QBox'
+description 'Simple airdrop script for QBCore'
 repository 'https://github.com/mooons9992/mns-airdrops'
 
 lua54 'yes'

@@ -14,6 +14,11 @@ local soundPlaying = false
 
 -- Function to play sound based on distance
 local function PlaySoundIfNearby(soundName, soundDict, coords, maxDistance)
+    -- Skip if sound name is empty (used to disable sounds)
+    if not soundName or soundName == '' then
+        return false
+    end
+
     local playerCoords = GetEntityCoords(PlayerPedId())
     local distance = #(playerCoords - coords)
     
@@ -30,53 +35,88 @@ local function PlaySoundIfNearby(soundName, soundDict, coords, maxDistance)
     return false
 end
 
--- Recurring sound checks
+-- Proper notification function that respects UI config
+local function SendNotification(message, type, duration)
+    if Config.UI.notification == 'qb' then
+        QBCore.Functions.Notify(message, type, duration)
+    elseif Config.UI.notification == 'ox' then
+        lib.notify({
+            title = 'Airdrop',
+            description = message,
+            type = type,
+            duration = duration
+        })
+    elseif Config.UI.notification == 'custom' then
+        -- Your custom notification code here
+    end
+end
+
+-- Recurring sound checks (UPDATED: Only plays if sound name is not empty)
 CreateThread(function()
     while true do
-        Wait(5000) -- Check every 5 seconds
+        Wait(Config.sounds.crate.interval or 5000)
         
-        -- If we have an active airdrop, check if we should play the beacon sound
-        if activeAirdropCoords then
-            PlaySoundIfNearby('Crate_Beeps', 'MP_CRATE_DROP_SOUNDS', activeAirdropCoords, 150.0)
+        -- If we have an active airdrop and sound is configured, play the beacon sound
+        if activeAirdropCoords and Config.sounds.crate.soundName ~= '' then
+            PlaySoundIfNearby(
+                Config.sounds.crate.soundName, 
+                Config.sounds.crate.soundDict, 
+                activeAirdropCoords, 
+                Config.sounds.crate.maxDistance
+            )
         else
-            Wait(5000) -- Wait longer if no active airdrop
+            Wait(5000) -- Wait longer if no active airdrop or sound disabled
         end
     end
 end)
 
 -- Airdrop start event
-RegisterNetEvent('mns-airdrops:client:startAirdrop', function(coords)
+RegisterNetEvent('mns-airdrops:client:startAirdrop', function(coords, isAdminTest)
     -- Store coordinates for sound system
     activeAirdropCoords = coords
     
-    -- Notify based on distance (only if close enough)
+    -- Notify based on distance (only if close enough or is admin test)
     local playerCoords = GetEntityCoords(PlayerPedId())
-    if #(playerCoords - coords) < 1500.0 then
-        QBCore.Functions.Notify("Airdrop incoming!", "primary", 5000)
+    local notifyDistance = Config.distances and Config.distances.notificationRange or 1500.0
+    
+    if isAdminTest or #(playerCoords - coords) < notifyDistance then
+        -- Use proper notification with config templates
+        local notif = Config.notifications.airdropIncoming
+        if isAdminTest then
+            notif = Config.notifications.adminTest
+        end
+        
+        -- Send notification
+        SendNotification(notif.message, notif.type, notif.duration)
         
         -- Only play sound if close enough
-        PlaySoundIfNearby('Mission_Pass_Notify', 'DLC_HEISTS_GENERAL_FRONTEND_SOUNDS', coords, 1000.0)
+        PlaySoundIfNearby(
+            Config.sounds.incoming.soundName, 
+            Config.sounds.incoming.soundDict, 
+            coords, 
+            Config.sounds.incoming.maxDistance
+        )
     end
     
     -- Create blips
     airdropBlip = AddBlipForCoord(coords.x, coords.y, coords.z)
-    SetBlipSprite(airdropBlip, 550)
+    SetBlipSprite(airdropBlip, Config.blips.airdrop.sprite)
     SetBlipDisplay(airdropBlip, 4)
-    SetBlipScale(airdropBlip, 0.7)
+    SetBlipScale(airdropBlip, Config.blips.airdrop.scale)
     SetBlipAsShortRange(airdropBlip, true)
-    SetBlipColour(airdropBlip, 1)
+    SetBlipColour(airdropBlip, Config.blips.airdrop.color)
     BeginTextCommandSetBlipName("STRING")
-    AddTextComponentSubstringPlayerName("Air Drop")
+    AddTextComponentSubstringPlayerName(Config.blips.airdrop.name)
     EndTextCommandSetBlipName(airdropBlip)
 
-    radius = AddBlipForRadius(coords, 120.0)
-    SetBlipColour(radius, 1)
-    SetBlipAlpha(radius, 80)
+    radius = AddBlipForRadius(coords, Config.blips.radius.size)
+    SetBlipColour(radius, Config.blips.radius.color)
+    SetBlipAlpha(radius, Config.blips.radius.alpha)
 
     -- Create effect
-    lib.requestNamedPtfxAsset("scr_biolab_heist")
-    SetPtfxAssetNextCall("scr_biolab_heist")
-    effect = StartParticleFxLoopedAtCoord("scr_heist_biolab_flare", coords, 0.0, 0.0, 0.0, 1.0, false, false, false, false)
+    lib.requestNamedPtfxAsset(Config.flare.asset)
+    SetPtfxAssetNextCall(Config.flare.asset)
+    effect = StartParticleFxLoopedAtCoord(Config.flare.effect, coords, 0.0, 0.0, 0.0, 1.0, false, false, false, false)
   
     -- Spawn aircraft
     spawnAirPlane(coords)
@@ -100,7 +140,7 @@ function spawnAirPlane(coords)
     end, "entity does not exist")
 
     planeblip = AddBlipForEntity(Plane)
-    SetBlipSprite(planeblip, 307)
+    SetBlipSprite(planeblip, Config.blips.plane.sprite)
     SetBlipRotation(planeblip, GetEntityHeading(Pilot))
     SetPedIntoVehicle(Pilot, Plane, -1)
 
@@ -129,18 +169,24 @@ function spawnAirPlane(coords)
             local dist = #(activeCoords - coords)
             
             -- Play plane sound based on distance
-            PlaySoundIfNearby('Flying_By', 'MP_MISSION_COUNTDOWN_SOUNDSET', activeCoords, 600.0)
+            PlaySoundIfNearby(
+                Config.sounds.plane.soundName,
+                Config.sounds.plane.soundDict,
+                activeCoords,
+                Config.sounds.plane.maxDistance
+            )
             
             -- Drop crate when close enough
             if dist < 300 and not dropped then
                 Wait(1000)
-                TaskPlaneMission(Pilot, Plane, 0, 0, -2194.32, 5120.9, Config.AirCraft.Height, 6, 0, 0, heading, 3000.0, 500.0)
+                TaskPlaneMission(Pilot, Plane, 0, 0, Config.aircraftDespawnPoint.x, Config.aircraftDespawnPoint.y, Config.aircraftDespawnPoint.z, 6, 0, 0, heading, 3000.0, 500.0)
                 spawnCrate(coords)
                 dropped = true
             end
             
             -- Delete plane when far enough away
-            if dropped and dist > 2000 then 
+            local deleteDist = Config.distances and Config.distances.planeDeleteDistance or 2000.0
+            if dropped and dist > deleteDist then 
                 DeleteEntity(Plane)
                 DeleteEntity(Pilot)
                 Plane = nil
@@ -202,7 +248,9 @@ function spawnCrate(coords)
                     TriggerServerEvent('mns-airdrops:server:getLoot')
                 end
             else
-                QBCore.Functions.Notify("This was already looted or being looted", "error")
+                -- Use proper notification with config
+                local notif = Config.notifications.alreadyLooted
+                SendNotification(notif.message, notif.type, notif.duration)
             end
         end
     }})
@@ -237,6 +285,17 @@ RegisterNetEvent('mns-airdrops:client:clearStuff', function()
     planeblip = nil
 end)
 
+-- Success notification for looting
+RegisterNetEvent('mns-airdrops:client:lootSuccessful', function()
+    local notif = Config.notifications.lootReceived
+    SendNotification(notif.message, notif.type, notif.duration)
+end)
+
+-- Command to test notifications (for debugging)
+RegisterCommand('testairnotify', function()
+    SendNotification("This is a test airdrop notification", "primary", 5000)
+end, false)
+
 -- Resource stop cleanup
 AddEventHandler('onResourceStop', function(resourceName)
     if (GetCurrentResourceName() ~= resourceName) then
@@ -245,4 +304,11 @@ AddEventHandler('onResourceStop', function(resourceName)
     
     -- Clean up all entities and effects
     TriggerEvent('mns-airdrops:client:clearStuff')
+end)
+
+-- Update the admin test command
+RegisterNetEvent('mns-airdrops:client:adminTestAirdrop', function(coords)
+    -- Pass true as second parameter to indicate this is an admin test
+    -- This ensures notification shows regardless of distance
+    TriggerEvent('mns-airdrops:client:startAirdrop', coords, true)
 end)

@@ -56,11 +56,4 @@ UI = {
 
 Coming soon...
 
-## Version History
-
-### 1.0.0
-- Initial release
-- Distance-based sound system
-- Multi-framework support
-- Version checker
 

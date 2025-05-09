@@ -9,7 +9,7 @@ function UI.Notify(player, data)
     
     -- If data is just a string, convert it to the proper format
     local notifyData = type(data) == "string" and {
-        title = "",
+        title = "Airdrop",  -- Default title for string notifications
         message = data,
         type = "primary",
         duration = 5000
@@ -140,11 +140,19 @@ function UI.ItemBox(source, item, type)
             text = (type == 'add' and 'Received' or 'Removed') .. ' ' .. QBCore.Shared.Items[item].label,
             type = type == 'add' and 'success' or 'error'
         })
+    elseif Config.UI.inventory == 'ps' then
+        -- ps-inventory compatibility
+        TriggerClientEvent('inventory:client:ItemBox', src, QBCore.Shared.Items[item], type)
     end
 end
 
--- Play a sound based on distance
+-- Play a sound based on distance - IMPROVED with empty string check
 function UI.PlaySoundWithDistance(soundConfig, coords)
+    -- Skip if sound name is empty (used to disable sounds)
+    if not soundConfig.soundName or soundConfig.soundName == '' then
+        return false
+    end
+    
     -- This function needs to be called client-side
     local playerCoords = GetEntityCoords(PlayerPedId())
     local distance = #(playerCoords - coords)
@@ -168,8 +176,13 @@ end
 -- List of active repeating sounds
 local activeSounds = {}
 
--- Start a repeating sound with distance check
+-- Start a repeating sound with distance check - IMPROVED with empty string check
 function UI.StartRepeatingSound(id, soundConfig, coords)
+    -- Skip if sound name is empty (used to disable sounds)
+    if not soundConfig.soundName or soundConfig.soundName == '' then
+        return false
+    end
+
     if activeSounds[id] then
         return -- Sound already playing
     end
@@ -198,6 +211,8 @@ function UI.StartRepeatingSound(id, soundConfig, coords)
         -- Play once
         UI.PlaySoundWithDistance(soundConfig, coords)
     end
+    
+    return true
 end
 
 -- Stop a repeating sound
@@ -210,6 +225,78 @@ end
 -- Stop all repeating sounds
 function UI.StopAllSounds()
     activeSounds = {}
+end
+
+-- Send a notification for airdrop using correct config
+function UI.AirdropNotify(type, coords, isAdmin)
+    if not Config.notifications or not Config.notifications[type] then
+        -- Fallback notification if config is missing
+        UI.Notify(nil, {
+            title = "Airdrop",
+            message = "Airdrop " .. type,
+            type = "primary",
+            duration = 5000
+        })
+        return
+    end
+
+    local notif = Config.notifications[type]
+    
+    -- Check distance for normal airdrops (not admin tests)
+    if not isAdmin and coords then
+        local notifyDistance = Config.distances and Config.distances.notificationRange or 1500.0
+        local playerCoords = GetEntityCoords(PlayerPedId())
+        if #(playerCoords - coords) > notifyDistance then
+            return false -- Too far away, don't notify
+        end
+    end
+    
+    -- Send notification
+    UI.Notify(nil, {
+        title = "Airdrop",
+        message = notif.message,
+        type = notif.type,
+        duration = notif.duration
+    })
+    
+    return true
+end
+
+-- Create a blip on the map
+function UI.CreateBlip(coords, config)
+    local blip = AddBlipForCoord(coords.x, coords.y, coords.z)
+    
+    if config then
+        if config.sprite then SetBlipSprite(blip, config.sprite) end
+        if config.scale then SetBlipScale(blip, config.scale) end
+        if config.color then SetBlipColour(blip, config.color) end
+        if config.name then 
+            BeginTextCommandSetBlipName("STRING")
+            AddTextComponentSubstringPlayerName(config.name)
+            EndTextCommandSetBlipName(blip)
+        end
+        if config.display then SetBlipDisplay(blip, config.display) end
+        if config.shortRange ~= nil then SetBlipAsShortRange(blip, config.shortRange) end
+    end
+    
+    return blip
+end
+
+-- Create a radius blip
+function UI.CreateRadiusBlip(coords, radius, color, alpha)
+    local blip = AddBlipForRadius(coords.x, coords.y, coords.z, radius)
+    
+    if color then SetBlipColour(blip, color) end
+    if alpha then SetBlipAlpha(blip, alpha) end
+    
+    return blip
+end
+
+-- Debug function
+function UI.Debug(message)
+    if Config.Debug then
+        print("^3[MNS-AIRDROPS]^7 " .. message)
+    end
 end
 
 return UI
