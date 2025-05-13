@@ -53,6 +53,17 @@ return {
          message = "Admin test airdrop initiated!",
          type = "primary",
          duration = 5000,
+      },
+      -- New notifications
+      inventoryFull = {
+         message = "Your inventory is full, make some space first",
+         type = "error",
+         duration = 3000,
+      },
+      itemAddFailed = {
+         message = "Failed to add some items to your inventory",
+         type = "error",
+         duration = 3000,
       }
    },
 
@@ -133,6 +144,31 @@ return {
       effect = "scr_heist_biolab_flare",
    },
 
+   -- Crate model configuration
+   crateModel = "gr_prop_gr_crates_guns_01a", -- Military crate with visible weapons
+   
+   -- Fallback models if primary fails to load (in order of preference)
+   fallbackModels = {
+      "prop_box_ammo04a",       -- Simple ammo box (loads reliably)
+      "prop_mil_crate_01",      -- Basic military crate (loads quickly)
+      "ex_prop_crate_ammo_sc",  -- Ammo supply crate
+      "prop_drop_armscrate_01"  -- Default airdrop crate
+   },
+
+   -- Model loading settings
+   modelLoadTimeout = 5000,     -- Milliseconds to wait for model to load (5 seconds)
+
+   -- Optional alternate models (commented out):
+   -- "gr_prop_gr_rsply_crate04a" -- Large gunrunning supply crate
+   -- "prop_mil_crate_01" -- Military crate
+   -- "ex_prop_crate_ammo_sc" -- Ammunition crate
+
+   -- Visual effects
+   enableParachuteEffect = false, -- Add parachute to crate when falling
+   enableSmokeOnLand = true, -- Add smoke effect when crate lands
+
+   -- Double-check your loot table has valid items
+
    --items that you can get in airdrop
    LootTable = {
       "weapon_combatpistol",
@@ -142,6 +178,10 @@ return {
       "weapon_carbinerifle",
       "weapon_machinepistol",
       "weapon_pistol",
+      -- Add some non-weapon items as fallbacks
+      "lockpick",
+      "phone",
+      "radio",
    },
 
    -- Range for random item count
@@ -150,7 +190,7 @@ return {
 
    timetodeletebox = 0.2, --time to delete the airdrop after looted in minutes
 
-   falldownSpeed = 0.1, -- you can set it like 0.01 to get very slow you 0.2 to get faster
+   falldownSpeed = 0.15, -- Slightly faster fall for military crates
    
    -- Admin command settings
    adminCommand = {
